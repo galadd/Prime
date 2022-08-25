@@ -7,7 +7,7 @@ contract PrimeMarket {
     mapping(uint256 => bool) public isActive;
     mapping(uint256 => string) public nameById;
     mapping(uint256 => uint256) public unitPriceById;
-    mapping(uint256 => uint256) public totalById;
+    mapping(uint256 => uint256) public totalCostById;
     mapping(uint256 => Market) public marketById;
 
     event MarketList(uint256 id, string name, uint256 unitPrice, uint256 total);
@@ -15,8 +15,7 @@ contract PrimeMarket {
     struct Market {
         uint256 id;
         string name;
-        uint256 unitPrice;
-        uint256 total;
+        uint256 totalCost;
     }
 
     Market[] public market;
@@ -34,7 +33,7 @@ contract PrimeMarket {
         isActive[_id] = false;
     }
 
-    function addMarket(string memory _name, uint256 _unitPrice, uint256 _total)
+    function addMarket(string memory _name, uint256 _unitPrice, uint256 _totalCost)
         public 
         {
             require(bytes(_name).length > 0);
@@ -43,41 +42,43 @@ contract PrimeMarket {
             Market memory m = Market({
                 id: marketCount,
                 name: _name,
-                unitPrice: _unitPrice,
-                total: _total 
+                totalCost: _totalCost 
             });
             market.push(m);
 
             nameById[marketCount] = _name;
             unitPriceById[marketCount] = _unitPrice;
-            totalById[marketCount] = _total;            
+            totalCostById[marketCount] = _totalCost;            
             marketById[marketCount] = m;
             isActive[marketCount] = false;
 
-            emit MarketList(marketCount, _name, _unitPrice, _total);
+            emit MarketList(marketCount, _name, _unitPrice, _totalCost);
         }
+
+    function updateUnitPrice(uint256 _id, uint256 _newUnitPrice) public {
+        unitPriceById[_id] = _newUnitPrice;
+    } 
 
     function editMarket(
         uint256 _id, 
         string memory _newName, 
         uint256 _newUnitPrice, 
-        uint256 _newTotal
+        uint256 _newTotalCost
         ) public {
             Market memory m = Market({
                 id: _id,
                 name: _newName,
-                unitPrice: _newUnitPrice,
-                total: _newTotal 
+                totalCost: _newTotalCost 
             });
             market.push(m);
 
             nameById[_id] = _newName;
             unitPriceById[_id] = _newUnitPrice;
-            totalById[_id] = _newTotal;            
+            totalCostById[_id] = _newTotalCost;            
             marketById[_id] = m;
             isActive[_id] = false;
 
-            emit MarketList(_id, _newName, _newUnitPrice, _newTotal);
+            emit MarketList(_id, _newName, _newUnitPrice, _newTotalCost);
     }
 
     function getMarketCount() public view returns (uint256) {
@@ -88,12 +89,12 @@ contract PrimeMarket {
         return nameById[_id];
     }
 
-    function getUnitPriceById(uint256 _id) public view returns (uint256) {
+    function getLatestUnitPriceById(uint256 _id) public view returns (uint256) {
         return unitPriceById[_id];
     }
 
     function getTotalById(uint256 _id) public view returns (uint256) {
-        return totalById[_id];
+        return totalCostById[_id];
     }
 
     function getMarketById(uint256 _id) public view returns (Market memory) {
@@ -106,21 +107,18 @@ contract PrimeMarket {
         returns (
             uint256[] memory, 
             string[] memory,
-            uint256[] memory,
             uint256[] memory
         )
         {
             uint256[] memory id = new uint256[](marketCount);
             string[] memory name = new string[](marketCount);
-            uint256[] memory unitPrice = new uint256[](marketCount);
-            uint256[] memory total = new uint256[](marketCount);
+            uint256[] memory totalCost = new uint256[](marketCount);
                  for (uint i = 0; i < marketCount; i++) {
                     Market storage m = market[i];
                     id[i] = m.id;
                     name[i] = m.name;
-                    unitPrice[i] = m.unitPrice;
-                    total[i] = m.total;
+                    totalCost[i] = m.totalCost;
                 }
-            return (id, name, unitPrice, total);
+            return (id, name, totalCost);
         }
 }
