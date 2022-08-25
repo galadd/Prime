@@ -93,12 +93,16 @@ contract PrimeMarket {
         return unitPriceById[_id];
     }
 
-    function getTotalById(uint256 _id) public view returns (uint256) {
+    function getTotalCostById(uint256 _id) public view returns (uint256) {
         return totalCostById[_id];
     }
 
     function getMarketById(uint256 _id) public view returns (Market memory) {
         return marketById[_id];
+    }
+
+    function getTotalQuantityById(uint256 _id) public view returns (uint256) {
+        return (totalCostById[_id] / unitPriceById[_id]);
     }
 
     function getMarket() 
