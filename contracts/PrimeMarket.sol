@@ -51,9 +51,13 @@ contract PrimeMarket {
             emit MarketList(marketCount, _name, _unitPrice);
         }
 
-    function getUnitPrice(uint256 _id, uint256 _newUnitPrice) public {
+    function updateUnitPrice(uint256 _id, uint256 _newUnitPrice) public {
         unitPriceById[_id] = _newUnitPrice;
     } 
+
+    function getUnitPrice(uint256 _id) public view returns (uint256) {
+        return unitPriceById[_id];
+    }
 
     function editMarket(
         uint256 _id, 
