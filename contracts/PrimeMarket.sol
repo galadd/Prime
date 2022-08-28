@@ -55,10 +55,6 @@ contract PrimeMarket {
         unitPriceById[_id] = _newUnitPrice;
     } 
 
-    function getUnitPrice(uint256 _id) public view returns (uint256) {
-        return unitPriceById[_id];
-    }
-
     function editMarket(
         uint256 _id, 
         string memory _newName, 
