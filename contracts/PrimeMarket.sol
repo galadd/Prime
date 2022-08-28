@@ -31,7 +31,7 @@ contract PrimeMarket {
         isActive[_id] = false;
     }
 
-    function addMarket(string memory _name, uint256 _unitPrice, uint256 _totalCost)
+    function addMarket(string memory _name, uint256 _unitPrice)
         public 
         {
             require(bytes(_name).length > 0);
@@ -51,7 +51,7 @@ contract PrimeMarket {
             emit MarketList(marketCount, _name, _unitPrice);
         }
 
-    function updateUnitPrice(uint256 _id, uint256 _newUnitPrice) public {
+    function getUnitPrice(uint256 _id, uint256 _newUnitPrice) public {
         unitPriceById[_id] = _newUnitPrice;
     } 
 
