@@ -7,15 +7,13 @@ contract PrimeMarket {
     mapping(uint256 => bool) public isActive;
     mapping(uint256 => string) public nameById;
     mapping(uint256 => uint256) public unitPriceById;
-    mapping(uint256 => uint256) public totalCostById;
     mapping(uint256 => Market) public marketById;
 
-    event MarketList(uint256 id, string name, uint256 unitPrice, uint256 total);
+    event MarketList(uint256 id, string name, uint256 unitPrice);
 
     struct Market {
         uint256 id;
         string name;
-        uint256 totalCost;
     }
 
     Market[] public market;
@@ -41,18 +39,16 @@ contract PrimeMarket {
 
             Market memory m = Market({
                 id: marketCount,
-                name: _name,
-                totalCost: _totalCost 
+                name: _name
             });
             market.push(m);
 
             nameById[marketCount] = _name;
-            unitPriceById[marketCount] = _unitPrice;
-            totalCostById[marketCount] = _totalCost;            
+            unitPriceById[marketCount] = _unitPrice;            
             marketById[marketCount] = m;
             isActive[marketCount] = false;
 
-            emit MarketList(marketCount, _name, _unitPrice, _totalCost);
+            emit MarketList(marketCount, _name, _unitPrice);
         }
 
     function updateUnitPrice(uint256 _id, uint256 _newUnitPrice) public {
@@ -62,23 +58,20 @@ contract PrimeMarket {
     function editMarket(
         uint256 _id, 
         string memory _newName, 
-        uint256 _newUnitPrice, 
-        uint256 _newTotalCost
+        uint256 _newUnitPrice
         ) public {
             Market memory m = Market({
                 id: _id,
-                name: _newName,
-                totalCost: _newTotalCost 
+                name: _newName
             });
             market.push(m);
 
             nameById[_id] = _newName;
-            unitPriceById[_id] = _newUnitPrice;
-            totalCostById[_id] = _newTotalCost;            
+            unitPriceById[_id] = _newUnitPrice;           
             marketById[_id] = m;
             isActive[_id] = false;
 
-            emit MarketList(_id, _newName, _newUnitPrice, _newTotalCost);
+            emit MarketList(_id, _newName, _newUnitPrice);
     }
 
     function getMarketCount() public view returns (uint256) {
@@ -93,16 +86,8 @@ contract PrimeMarket {
         return unitPriceById[_id];
     }
 
-    function getTotalCostById(uint256 _id) public view returns (uint256) {
-        return totalCostById[_id];
-    }
-
     function getMarketById(uint256 _id) public view returns (Market memory) {
         return marketById[_id];
-    }
-
-    function getTotalQuantityById(uint256 _id) public view returns (uint256) {
-        return (totalCostById[_id] / unitPriceById[_id]);
     }
 
     function getMarket() 
@@ -110,19 +95,16 @@ contract PrimeMarket {
         view 
         returns (
             uint256[] memory, 
-            string[] memory,
-            uint256[] memory
+            string[] memory
         )
         {
             uint256[] memory id = new uint256[](marketCount);
             string[] memory name = new string[](marketCount);
-            uint256[] memory totalCost = new uint256[](marketCount);
                  for (uint i = 0; i < marketCount; i++) {
                     Market storage m = market[i];
                     id[i] = m.id;
                     name[i] = m.name;
-                    totalCost[i] = m.totalCost;
                 }
-            return (id, name, totalCost);
+            return (id, name);
         }
 }
