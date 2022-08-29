@@ -5,8 +5,9 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "./PrimeX.sol";
 import "./PrimeMarket.sol";
+import "./PrimeAccessibility.sol";
 
-contract PrimeTrade is PrimeMarket {
+contract PrimeTrade is PrimeX, PrimeMarket, PrimeAccessibility {
 
     PrimeX public primex;
 
@@ -62,6 +63,7 @@ contract PrimeTrade is PrimeMarket {
     function placeOrder(uint256 _marketId, Position _position, uint256 _leverage, uint256 _amount) 
         public
         payable
+        onlyPrimeAccounts
         returns (uint256, uint256)
         {   
             if(isActive[_marketId] == false) { revert MarketUntradeable(); } 
@@ -214,9 +216,12 @@ contract PrimeTrade is PrimeMarket {
             return (cost, averageLeverage);
         }
 
-    function closeOrder(uint256 _marketId) public returns (uint256, bool) {
+    function closeOrder(uint256 _marketId) public onlyPrimeAccounts returns (uint256, bool) {
         require(marketStatusForSender[_marketId][msg.sender] == true, "The market is not presently traded by sender");
         marketStatusForSender[_marketId][msg.sender] = false;
+
+        uint256 returned;
+        uint256 cost = costBySenderAndMarketId[_marketId][msg.sender];
         uint256 tradePrice = priceBySenderAndMarketId[_marketId][msg.sender];
         uint256 closePrice = unitPriceById[_marketId];
         uint256 tradeRatio = closePrice / tradePrice;
@@ -227,21 +232,30 @@ contract PrimeTrade is PrimeMarket {
         if(positionBySenderAndMarketId[_marketId][msg.sender] == Position.LONG) {
             if(finalSize > initialSize) {
                 uint256 profit = finalSize - initialSize;
+                returned = cost;
+                _mint(msg.sender, profit);
                 return (profit, true);
             } else if(finalSize <= initialSize) {
                 uint256 loss = initialSize - finalSize;
+                returned = cost - loss;
+                _burn(address(this), loss);
                 return (loss, false);
             }
 
         } else if(positionBySenderAndMarketId[_marketId][msg.sender] == Position.SHORT) {
             if(finalSize > initialSize) {
                 uint256 loss = finalSize - initialSize;
+                returned = cost - loss;
+                _burn(address(this), loss);
                 return (loss, false);
             } else if(finalSize <= initialSize) {
                 uint256 profit = initialSize - finalSize;
+                returned = cost;
+                _mint(msg.sender, profit);
                 return (profit, true);
             }
         }
+        payable(msg.sender).transfer(returned);
     }
 
    function getCostFromMarketIdAndAddress(uint256 _marketId, address _user) 
