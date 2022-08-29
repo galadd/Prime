@@ -7,9 +7,11 @@ import "./PrimeX.sol";
 import "./PrimeMarket.sol";
 import "./PrimeAccessibility.sol";
 
-contract PrimeTrade is PrimeX, PrimeMarket, PrimeAccessibility {
+contract PrimeTrade is PrimeMarket, PrimeAccessibility {
 
+    uint256 public primeXPerEth;
     PrimeX public primex;
+    IERC20 primexContract = IERC20(primex);
 
     using Counters for Counters.Counter;
     Counters.Counter private _orderId;
@@ -39,6 +41,9 @@ contract PrimeTrade is PrimeX, PrimeMarket, PrimeAccessibility {
         uint256 amount
     );
     event TradeClosed(uint256 orderId, address sender, uint256 marketId, uint256 pnl);
+
+    event BuyPrimeX(address buyer, uint256 amountOfETH, uint256 amountOfPrimeX);
+    event SellPrimeX(address seller, uint256 amountOfPrimeX, uint256 amountOfETH);
 
     error MarketUntradeable();
     error LeverageLimit();
@@ -235,12 +240,12 @@ contract PrimeTrade is PrimeX, PrimeMarket, PrimeAccessibility {
                 uint256 profit = finalSize - initialSize;
                 returned = cost;
                 pnl = true;
-                _mint(msg.sender, profit);
+                //_mint(msg.sender, profit);
             } else if(finalSize <= initialSize) {
                 uint256 loss = initialSize - finalSize;
                 returned = cost - loss;
                 pnl = false;
-                _burn(address(this), loss);
+                //_burn(address(this), loss);
                 return (loss, false);
             }
 
@@ -249,15 +254,15 @@ contract PrimeTrade is PrimeX, PrimeMarket, PrimeAccessibility {
                 uint256 loss = finalSize - initialSize;
                 returned = cost - loss;
                 pnl = false;
-                _burn(address(this), loss);
+                //_burn(address(this), loss);
             } else if(finalSize <= initialSize) {
                 uint256 profit = initialSize - finalSize;
                 returned = cost;
                 pnl = true;
-                _mint(msg.sender, profit);
+                //_mint(msg.sender, profit);
             }
         }
-        payable(msg.sender).transfer(returned);
+        primexContract.transfer(msg.sender, returned);
         return (returned, pnl);
     }
 
