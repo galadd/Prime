@@ -221,6 +221,7 @@ contract PrimeTrade is PrimeX, PrimeMarket, PrimeAccessibility {
         marketStatusForSender[_marketId][msg.sender] = false;
 
         uint256 returned;
+        bool pnl;
         uint256 cost = costBySenderAndMarketId[_marketId][msg.sender];
         uint256 tradePrice = priceBySenderAndMarketId[_marketId][msg.sender];
         uint256 closePrice = unitPriceById[_marketId];
@@ -233,11 +234,12 @@ contract PrimeTrade is PrimeX, PrimeMarket, PrimeAccessibility {
             if(finalSize > initialSize) {
                 uint256 profit = finalSize - initialSize;
                 returned = cost;
+                pnl = true;
                 _mint(msg.sender, profit);
-                return (profit, true);
             } else if(finalSize <= initialSize) {
                 uint256 loss = initialSize - finalSize;
                 returned = cost - loss;
+                pnl = false;
                 _burn(address(this), loss);
                 return (loss, false);
             }
@@ -246,16 +248,17 @@ contract PrimeTrade is PrimeX, PrimeMarket, PrimeAccessibility {
             if(finalSize > initialSize) {
                 uint256 loss = finalSize - initialSize;
                 returned = cost - loss;
+                pnl = false;
                 _burn(address(this), loss);
-                return (loss, false);
             } else if(finalSize <= initialSize) {
                 uint256 profit = initialSize - finalSize;
                 returned = cost;
+                pnl = true;
                 _mint(msg.sender, profit);
-                return (profit, true);
             }
         }
         payable(msg.sender).transfer(returned);
+        return (returned, pnl);
     }
 
    function getCostFromMarketIdAndAddress(uint256 _marketId, address _user) 
