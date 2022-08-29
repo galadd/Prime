@@ -14,13 +14,20 @@ contract PrimeTrade is PrimeMarket {
     Counters.Counter private _orderId;
 
     mapping(uint256 => Order) public orderById;
+
     mapping(uint256 => address) public orderIdByAddress;
+
     mapping(uint256 => uint256) public pnlByOrderId;
+
     mapping(uint256 => mapping(address => bool)) public marketStatusForSender;
+
     mapping(uint256 => mapping(address => uint256)) public costBySenderAndMarketId;
     mapping(uint256 => mapping(address => uint256)) public leverageBySenderAndMarketId;
-    mapping(uint256 => mapping(address => Position)) public positionBySenderAndMarketId;
+    mapping(uint256 => mapping(address => uint256)) public sizeBySenderAndMarketId;
+    mapping(uint256 => mapping(address => uint256)) public priceBySenderAndMarketId;
     mapping(uint256 => mapping(address => uint256)) public pnlBySenderAndMarketId;
+
+    mapping(uint256 => mapping(address => Position)) public positionBySenderAndMarketId;
 
     event OrderCreated(
         uint256 orderId, 
@@ -50,18 +57,7 @@ contract PrimeTrade is PrimeMarket {
         uint256 leverage;
         uint256 amount;
     }
-
-    struct PositionSize {
-        uint256 marketId;
-        address user;
-        uint256 initialTotal;
-        uint256 finalTotal;
-        uint256 pnl;
-        ProfitOrLoss profitOrLoss; 
-    }
-
     Order[] public orders;
-    PositionSize[] public positionSizes;
 
     function placeOrder(uint256 _marketId, Position _position, uint256 _leverage, uint256 _amount) 
         public
@@ -71,12 +67,16 @@ contract PrimeTrade is PrimeMarket {
             if(isActive[_marketId] == false) { revert MarketUntradeable(); } 
             if(_leverage > 10) { revert LeverageLimit(); }
             require(_amount > 0 && _amount == msg.value, "Amount to be traded must be greater than 0 and equal to msg.value");
+
             _orderId.increment();
-            uint256 cost = getCostFromMarketIdAndAddress(_marketId, msg.sender) + _amount;
-            uint256 oldSize = getCostFromMarketIdAndAddress(_marketId, msg.sender) * getLeveregeFromMarketIdAndAddress(_marketId, msg.sender);
-            uint256 newSize = _amount * _leverage;
             uint256 positionSize;
             uint256 averageLeverage;
+
+            uint256 tradePrice = getLatestUnitPriceById(_marketId);
+            uint256 cost = costBySenderAndMarketId[_marketId][msg.sender] + _amount;
+            uint256 updatedSize = costBySenderAndMarketId[_marketId][msg.sender] * leverageBySenderAndMarketId[_marketId][msg.sender];
+            uint256 newSize = _amount * _leverage;
+
 
             // line 78-93 is processed when market is not already being traded by the sender
             if(marketStatusForSender[_marketId][msg.sender] == false) {
@@ -100,6 +100,7 @@ contract PrimeTrade is PrimeMarket {
             // this is a condition for a market that is already being traded by the sender  
             } else if(marketStatusForSender[_marketId][msg.sender] == true) {
                 if(_position == Position.LONG) {
+
                     // logic to be executed if the previous position on the market is long
                     if(positionBySenderAndMarketId[_marketId][msg.sender] == Position.LONG) {
                         Order memory order = Order({
@@ -115,9 +116,9 @@ contract PrimeTrade is PrimeMarket {
                         orderById[_orderId.current()] = order;
                         orderIdByAddress[_orderId.current()] = msg.sender;
                         marketStatusForSender[_marketId][msg.sender] = true;
-                        positionSize = oldSize + newSize;
+                        positionSize = updatedSize + newSize;
 
-                        positionBySenderAndMarketId[_marketId][msg.sender] = _position;
+                        positionBySenderAndMarketId[_marketId][msg.sender] = Position.LONG;
 
                     // logic to be executed if the previous position on the market is short
                     } else if(positionBySenderAndMarketId[_marketId][msg.sender] == Position.SHORT) {
@@ -135,14 +136,21 @@ contract PrimeTrade is PrimeMarket {
                         orderIdByAddress[_orderId.current()] = msg.sender;
                         marketStatusForSender[_marketId][msg.sender] = true;
 
-                        if(newSize > oldSize) {
-                            positionSize =  newSize - oldSize;
-                            positionBySenderAndMarketId[_marketId][msg.sender] = Position.SHORT;
-                        } else if(newSize < oldSize) {
-                            positionSize =  oldSize - newSize;
+                        if(newSize > updatedSize) {
+                            positionSize =  newSize - updatedSize;
                             positionBySenderAndMarketId[_marketId][msg.sender] = Position.LONG;
+
+                        } else if(newSize < updatedSize) {
+                            positionSize =  updatedSize - newSize;
+                            positionBySenderAndMarketId[_marketId][msg.sender] = Position.SHORT;
+
+                        } else if(newSize == updatedSize) {
+                            marketStatusForSender[_marketId][msg.sender] = false;
+                            positionSize = 0;
+                            positionBySenderAndMarketId[_marketId][msg.sender] = Position.NIL;
                         }
                     }
+
                 } else if(_position == Position.SHORT) {
                     // logic to be executed if the previous position on the market is long
                     if(positionBySenderAndMarketId[_marketId][msg.sender] == Position.LONG) {
@@ -158,19 +166,18 @@ contract PrimeTrade is PrimeMarket {
                         orders.push(order);
                         orderById[_orderId.current()] = order;
                         orderIdByAddress[_orderId.current()] = msg.sender;
+                        marketStatusForSender[_marketId][msg.sender] = true;
 
-                        if(newSize > oldSize) {
-                            marketStatusForSender[_marketId][msg.sender] = true;
-                            positionSize =  newSize - oldSize;
-                            positionBySenderAndMarketId[_marketId][msg.sender] = Position.LONG;
-                        } else if(newSize < oldSize) {
-                            marketStatusForSender[_marketId][msg.sender] = true;
-                            cost = getCostFromMarketIdAndAddress(_marketId, msg.sender) - _amount;
-                            positionSize =  oldSize - newSize;
+                        if(newSize > updatedSize) {
+                            positionSize =  newSize - updatedSize;
                             positionBySenderAndMarketId[_marketId][msg.sender] = Position.SHORT;
-                        } else if(newSize == oldSize) {
+
+                        } else if(newSize < updatedSize) {
+                            positionSize =  updatedSize - newSize;
+                            positionBySenderAndMarketId[_marketId][msg.sender] = Position.LONG;
+
+                        } else if(newSize == updatedSize) {
                             marketStatusForSender[_marketId][msg.sender] = false;
-                            cost = _amount - getCostFromMarketIdAndAddress(_marketId, msg.sender);
                             positionSize = 0;
                             positionBySenderAndMarketId[_marketId][msg.sender] = Position.NIL;
                         }
@@ -190,7 +197,7 @@ contract PrimeTrade is PrimeMarket {
                         orderById[_orderId.current()] = order;
                         orderIdByAddress[_orderId.current()] = msg.sender;
                         marketStatusForSender[_marketId][msg.sender] = true;
-                        positionSize =  oldSize + newSize;
+                        positionSize =  updatedSize + newSize;
                         positionBySenderAndMarketId[_marketId][msg.sender] = Position.SHORT;
                     }
                 }     
@@ -200,41 +207,55 @@ contract PrimeTrade is PrimeMarket {
 
             leverageBySenderAndMarketId[_marketId][msg.sender] = averageLeverage;
             costBySenderAndMarketId[_marketId][msg.sender] = cost;
+            priceBySenderAndMarketId[_marketId][msg.sender] = tradePrice;
+
             primex.transfer(address(this), _amount);
-            emit OrderCreated(_orderId.current(), msg.sender, _marketId, _position, averageLeverage, msg.value);
+            emit OrderCreated(_orderId.current(), msg.sender, _marketId, _position, _leverage, msg.value);
             return (cost, averageLeverage);
         }
 
-    function getCostFromMarketIdAndAddress(uint256 _marketId, address _user) 
+    function closeOrder(uint256 _marketId) public returns (uint256, bool) {
+        require(marketStatusForSender[_marketId][msg.sender] == true, "The market is not presently traded by sender");
+        marketStatusForSender[_marketId][msg.sender] = false;
+        uint256 tradePrice = priceBySenderAndMarketId[_marketId][msg.sender];
+        uint256 closePrice = unitPriceById[_marketId];
+        uint256 tradeRatio = closePrice / tradePrice;
+
+        uint256 initialSize = sizeBySenderAndMarketId[_marketId][msg.sender];
+        uint256 finalSize = initialSize * tradeRatio;
+
+        if(positionBySenderAndMarketId[_marketId][msg.sender] == Position.LONG) {
+            if(finalSize > initialSize) {
+                uint256 profit = finalSize - initialSize;
+                return (profit, true);
+            } else if(finalSize <= initialSize) {
+                uint256 loss = initialSize - finalSize;
+                return (loss, false);
+            }
+
+        } else if(positionBySenderAndMarketId[_marketId][msg.sender] == Position.SHORT) {
+            if(finalSize > initialSize) {
+                uint256 loss = finalSize - initialSize;
+                return (loss, false);
+            } else if(finalSize <= initialSize) {
+                uint256 profit = initialSize - finalSize;
+                return (profit, true);
+            }
+        }
+    }
+
+   function getCostFromMarketIdAndAddress(uint256 _marketId, address _user) 
         public 
         view 
         returns (uint256) 
         {
             return costBySenderAndMarketId[_marketId][_user];
         }
-    
-    function getLeveregeFromMarketIdAndAddress(uint256 _marketId, address _user)
-        public
-        view
-        returns (uint256)
-        {
-            return leverageBySenderAndMarketId[_marketId][_user];
-        }
 
-    function getPNL(uint256 _marketId, address _user) public view returns (uint256) {
-        return pnlBySenderAndMarketId[_marketId][_user];
+    function getPriceLiquidated(uint256 _marketId, address _user) public view returns (uint256) {
+        uint256 leverageUsed = leverageBySenderAndMarketId[_marketId][_user];
+        uint256 liquidationRatio = 100 / leverageUsed;
+        uint256 tradePrice = priceBySenderAndMarketId[_marketId][_user];
+        return tradePrice / liquidationRatio;
     }
-/*
-    function closeTrade(uint256 _marketId) public view returns (uint256) {
-        Total memory total = Total({
-            marketId: _marketId,
-            user: msg.sender,
-            initialTotal: 
-            finalTotal:
-        });
-        totals.push(total);
-        uint256 profitOrLoss = getPNL(_marketId, _user);
-        return profitOrLoss; 
-    }
-*/
 }
