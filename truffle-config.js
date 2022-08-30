@@ -44,7 +44,9 @@
 // require('dotenv').config();
 // const { MNEMONIC, PROJECT_ID } = process.env;
 
-// const HDWalletProvider = require('@truffle/hdwallet-provider');
+const HDWalletProvider = require('@truffle/hdwallet-provider');
+const mnemonic =
+  "fish gravity destroy expose right identify wine cup junior crazy genius judge";
 
 module.exports = {
   /**
@@ -64,7 +66,7 @@ module.exports = {
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
     //
-    // development: {
+    //development: {
     //  host: "127.0.0.1",     // Localhost (default: none)
     //  port: 8545,            // Standard Ethereum port (default: none)
     //  network_id: "*",       // Any network (default: none)
@@ -96,6 +98,12 @@ module.exports = {
     //   network_id: 2111,   // This network is yours, in the cloud.
     //   production: true    // Treats this network as if it was a public net. (default: false)
     // }
+    evmos: {
+      provider: () =>
+        new HDWalletProvider(mnemonic, "https://eth.bd.evmos.dev:8545"),
+      network_id: 9000,
+      chain_id: 9000,
+    },
   },
 
   // Set default mocha options here, use special reporters, etc.
