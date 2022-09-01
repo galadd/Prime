@@ -6,12 +6,11 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "./PrimeX.sol";
 import "./PrimeMarket.sol";
 import "./PrimeAccessibility.sol";
+import "./PrimeAdmin.sol";
 
 contract PrimeTrade is PrimeMarket, PrimeAccessibility {
 
-    uint256 public primeXPerEth;
     PrimeX public primex;
-    IERC20 primexContract = IERC20(primex);
 
     using Counters for Counters.Counter;
     Counters.Counter private _orderId;
@@ -67,13 +66,12 @@ contract PrimeTrade is PrimeMarket, PrimeAccessibility {
 
     function placeOrder(uint256 _marketId, Position _position, uint256 _leverage, uint256 _amount) 
         public
-        payable
         onlyPrimeAccounts
         returns (uint256, uint256)
         {   
             if(isActive[_marketId] == false) { revert MarketUntradeable(); } 
             if(_leverage > 10) { revert LeverageLimit(); }
-            require(_amount > 0 && _amount == msg.value, "Amount to be traded must be greater than 0 and equal to msg.value");
+            require(_amount > 0, "Amount to be traded must be greater than 0");
 
             _orderId.increment();
             uint256 positionSize;
@@ -216,8 +214,9 @@ contract PrimeTrade is PrimeMarket, PrimeAccessibility {
             costBySenderAndMarketId[_marketId][msg.sender] = cost;
             priceBySenderAndMarketId[_marketId][msg.sender] = tradePrice;
 
-            primex.transfer(address(this), _amount);
-            emit OrderCreated(_orderId.current(), msg.sender, _marketId, _position, _leverage, msg.value);
+            primex.approve(address(this), _amount);
+            primex.transferFrom(msg.sender, address(this), _amount);
+            emit OrderCreated(_orderId.current(), msg.sender, _marketId, _position, _leverage, _amount);
             return (cost, averageLeverage);
         }
 
@@ -238,14 +237,13 @@ contract PrimeTrade is PrimeMarket, PrimeAccessibility {
         if(positionBySenderAndMarketId[_marketId][msg.sender] == Position.LONG) {
             if(finalSize > initialSize) {
                 uint256 profit = finalSize - initialSize;
-                returned = cost;
                 pnl = true;
-                //_mint(msg.sender, profit);
+                primex.mint(msg.sender, profit);
             } else if(finalSize <= initialSize) {
                 uint256 loss = initialSize - finalSize;
                 returned = cost - loss;
                 pnl = false;
-                //_burn(address(this), loss);
+                //primex.burn(loss);
                 return (loss, false);
             }
 
@@ -254,15 +252,15 @@ contract PrimeTrade is PrimeMarket, PrimeAccessibility {
                 uint256 loss = finalSize - initialSize;
                 returned = cost - loss;
                 pnl = false;
-                //_burn(address(this), loss);
+                //primex.burn(loss);
             } else if(finalSize <= initialSize) {
                 uint256 profit = initialSize - finalSize;
-                returned = cost;
                 pnl = true;
-                //_mint(msg.sender, profit);
+                primex.mint(msg.sender, profit);
             }
         }
-        primexContract.transfer(msg.sender, returned);
+        
+        primex.transfer(msg.sender, returned);
         return (returned, pnl);
     }
 
