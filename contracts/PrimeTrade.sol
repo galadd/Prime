@@ -224,6 +224,8 @@ contract PrimeTrade is PrimeMarket, PrimeAccessibility {
         require(marketStatusForSender[_marketId][msg.sender] == true, "The market is not presently traded by sender");
         marketStatusForSender[_marketId][msg.sender] = false;
 
+        uint256 profit;
+        uint256 loss;
         uint256 returned;
         bool pnl;
         uint256 cost = costBySenderAndMarketId[_marketId][msg.sender];
@@ -236,27 +238,24 @@ contract PrimeTrade is PrimeMarket, PrimeAccessibility {
 
         if(positionBySenderAndMarketId[_marketId][msg.sender] == Position.LONG) {
             if(finalSize > initialSize) {
-                uint256 profit = finalSize - initialSize;
+                profit = finalSize - initialSize;
+                returned = cost + profit;
                 pnl = true;
-                primex.mint(msg.sender, profit);
             } else if(finalSize <= initialSize) {
-                uint256 loss = initialSize - finalSize;
+                loss = initialSize - finalSize;
                 returned = cost - loss;
                 pnl = false;
-                //primex.burn(loss);
-                return (loss, false);
             }
 
         } else if(positionBySenderAndMarketId[_marketId][msg.sender] == Position.SHORT) {
             if(finalSize > initialSize) {
-                uint256 loss = finalSize - initialSize;
+                loss = finalSize - initialSize;
                 returned = cost - loss;
                 pnl = false;
-                //primex.burn(loss);
             } else if(finalSize <= initialSize) {
-                uint256 profit = initialSize - finalSize;
+                profit = initialSize - finalSize;
+                returned = cost + profit;
                 pnl = true;
-                primex.mint(msg.sender, profit);
             }
         }
         
