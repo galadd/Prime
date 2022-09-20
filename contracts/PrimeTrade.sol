@@ -73,6 +73,9 @@ contract PrimeTrade is PrimeMarket, PrimeAccessibility {
             if(_leverage > 10) { revert LeverageLimit(); }
             require(_amount > 0, "Amount to be traded must be greater than 0");
 
+            _leverage = _leverage * 10 ** 8;
+            _amount = _amount * 10 ** 8;
+
             _orderId.increment();
             uint256 positionSize;
             uint256 averageLeverage;
