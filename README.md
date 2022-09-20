@@ -35,4 +35,4 @@ Prime demoscratizes access to the financial markets by replacing intermediaries 
 ### Deployments
 
 The smart contract is deployed to EVMOS testnet Network
-- 
+- PrimeX: 0xD5f45B50Ab61309b0a73AC2BB82a6A0B1Fe94B50
